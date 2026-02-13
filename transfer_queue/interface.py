@@ -110,13 +110,12 @@ def _init_from_existing() -> bool:
 
     conf = None
     while conf is None:
-        remote_conf = ray.get(controller.get_config.remote())
+        conf = ray.get(controller.get_config.remote())
         if remote_conf is not None:
             _maybe_create_transferqueue_client(remote_conf)
             logger.info("TransferQueueClient initialized.")
             return True
 
-        conf = remote_conf
         logger.debug("Waiting for controller to initialize... Retrying in 1s")
         time.sleep(1)
 

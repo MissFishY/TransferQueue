@@ -114,6 +114,7 @@ def _init_from_existing() -> bool:
             logger.info("TransferQueueClient initialized.")
             return True
 
+        conf = remote_conf
         logger.debug("Waiting for controller to initialize... Retrying in 1s")
         time.sleep(1)
 
@@ -157,8 +158,6 @@ def init(conf: Optional[DictConfig] = None) -> None:
 
     # First-time initialize TransferQueue
     logger.info("No TransferQueueController found. Starting first-time initialization...")
-
-    # First-time initialize TransferQueue
 
     # create config
     final_conf = OmegaConf.create({}, flags={"allow_objects": True})

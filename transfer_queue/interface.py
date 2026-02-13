@@ -47,9 +47,10 @@ def _maybe_create_transferqueue_client(
     global _TRANSFER_QUEUE_CLIENT
     if _TRANSFER_QUEUE_CLIENT is None:
         if conf is None:
-            result = _init_from_existing()
-            assert result is True
-            assert _TRANSFER_QUEUE_CLIENT is not None
+            _init_from_existing()
+            assert _TRANSFER_QUEUE_CLIENT is not None, (
+                "TransferQueueController has not been initialized yet. Please call init() first."
+            )
             return _TRANSFER_QUEUE_CLIENT
 
         pid = os.getpid()
@@ -102,7 +103,7 @@ def _init_from_existing() -> bool:
     try:
         controller = ray.get_actor("TransferQueueController")
     except ValueError:
-        logger.warning("Called _init_from_existing() but TransferQueue Controller has not been initialized yet.")
+        logger.info("Called _init_from_existing() but TransferQueueController has not been initialized yet.")
         return False
 
     logger.info("Found existing TransferQueueController instance. Connecting...")
@@ -110,8 +111,8 @@ def _init_from_existing() -> bool:
     conf = None
     while conf is None:
         conf = ray.get(controller.get_config.remote())
-        if remote_conf is not None:
-            _maybe_create_transferqueue_client(remote_conf)
+        if conf is not None:
+            _maybe_create_transferqueue_client(conf)
             logger.info("TransferQueueClient initialized.")
             return True
 

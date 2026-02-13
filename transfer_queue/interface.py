@@ -47,8 +47,11 @@ def _maybe_create_transferqueue_client(
     global _TRANSFER_QUEUE_CLIENT
     if _TRANSFER_QUEUE_CLIENT is None:
         if conf is None:
-            _init_from_existing()
+            result = _init_from_existing()
+            assert result is True
+            assert _TRANSFER_QUEUE_CLIENT is not None
             return _TRANSFER_QUEUE_CLIENT
+
         pid = os.getpid()
         _TRANSFER_QUEUE_CLIENT = TransferQueueClient(
             client_id=f"TransferQueueClient_{pid}", controller_info=conf.controller.zmq_info
@@ -89,10 +92,18 @@ def _maybe_create_transferqueue_storage(conf: DictConfig) -> DictConfig:
     return conf
 
 
-def _init_from_existing() -> None:
-    """Initialize the TransferQueueClient from existing controller."""
+def _init_from_existing() -> bool:
+    """Initialize the TransferQueueClient from existing controller.
 
-    controller = ray.get_actor("TransferQueueController")
+    Returns:
+        True if successfully initialized from existing controller, False otherwise.
+    """
+
+    try:
+        controller = ray.get_actor("TransferQueueController")
+    except ValueError:
+        return False
+
     logger.info("Found existing TransferQueueController instance. Connecting...")
 
     conf = None
@@ -101,10 +112,12 @@ def _init_from_existing() -> None:
         if remote_conf is not None:
             _maybe_create_transferqueue_client(remote_conf)
             logger.info("TransferQueueClient initialized.")
-            return
+            return True
 
         logger.debug("Waiting for controller to initialize... Retrying in 1s")
         time.sleep(1)
+
+    return False
 
 
 # ==================== Initialization API ====================
@@ -139,12 +152,11 @@ def init(conf: Optional[DictConfig] = None) -> None:
         >>> metadata = tq.get_meta(...)
         >>> data = tq.get_data(metadata)
     """
-    try:
-        _init_from_existing()
-    except ValueError:
-        logger.info("No TransferQueueController found. Starting first-time initialization...")
-    else:
+    if _init_from_existing():
         return
+
+    # First-time initialize TransferQueue
+    logger.info("No TransferQueueController found. Starting first-time initialization...")
 
     # First-time initialize TransferQueue
 
